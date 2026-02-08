@@ -254,6 +254,12 @@ void	serv::join(string b, User &user)
 			errors.sendChannelInviteOnly(user.getUserFD(), arr[0]);
 			return ;
 		}
+		/*debug*/
+		std::cout << "operators after JOIN" << std::endl;
+		for (std::map<std::string, bool>::const_iterator itr = i->second.operators.begin();
+			itr != i->second.operators.end(); ++itr)
+	 			std::cout << "name = " << itr->first << " bool = " << itr->second << std::endl;
+		/*debug*/
 	}
 	else
 	{
@@ -262,7 +268,6 @@ void	serv::join(string b, User &user)
 		chan.operators.insert(std::pair<std::string, bool> (user.getNickName(), true));
 		addUserToChannel(user, chan, arr, true);
 	}
-	
 }
 
 void	serv::kick(std::string b, User &user)
@@ -320,6 +325,14 @@ void	serv::invite(std::string b, User &user)
 		errors.sendNotOnChannel(user.getUserFD(), arr[0]);
 		return ;
 	}
+	/* debug*/
+	std::cout << "before if checking" << std::endl;
+	if (/*ch->second->i &&*/ ch->second->operators.find(user.getNickName()) == ch->second->operators.end())
+	{
+		errors.sendOpPrivilegesNeeded(user.getUserFD(), arr[1]);
+		return ;
+	}
+	/*debug*/
 	if (!getUserFDByNick(arr[0]))
 	{
 		errors.sendNickNotFound(user.getUserFD(), arr[0]);
@@ -332,15 +345,20 @@ void	serv::invite(std::string b, User &user)
 		return ;
 	}
 	cout << it->first << endl;
-	if (ch->second->i && ch->second->operators.find(user.getNickName()) == ch->second->operators.end())
-	{
-		errors.sendOpPrivilegesNeeded(user.getUserFD(), arr[1]);
-		return ;
-	}
+	// if (ch->second->i && ch->second->operators.find(user.getNickName()) == ch->second->operators.end())
+	// {
+	// 	errors.sendOpPrivilegesNeeded(user.getUserFD(), arr[1]);
+	// 	return ;
+	// }
 	cout << it->second.getUserFD() << endl;
 	ch->second->setMembers(getUserFDByNick(arr[0]), users.find(getUserFDByNick(arr[0]))->second);
 	it->second.addChannel(ch->second->getChannelName(), *(ch->second));
 	errors.RPL_INVITING(user.getUserFD(), ch->second->getChannelName(), user.getNickName(), user.getUserName(), arr[0]);
+	/*debug*/
+	std::cout << "operators after INVITE" << std::endl;
+	for (std::map<std::string, bool>::const_iterator i = ch->second->operators.begin(); i != ch->second->operators.end(); i++)
+		std::cout << "name = " << i->first << " bool = " << i->second << std::endl;
+	/*debug*/
 }
 
 void	serv::channelTopic(std::string b, User &user)

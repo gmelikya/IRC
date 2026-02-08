@@ -31,6 +31,13 @@ map<std::string, Channel*>::iterator serv::findChannelsFromUsers(std::string nam
 
 bool	serv::joinWithTwoArgs(User &user, Channel &chan, std::vector<string> arr, bool flag)
 {
+	/*debag*/
+	std::cout << "flag join 2 args = " << flag << std::endl;
+	for (auto it = arr.begin(); it != arr.end(); ++it)
+		std::cout << *it << " ";
+	std::cout << std::endl;
+	
+	/*debag*/
 	if (flag)
 	{
 		if (chan.operators.find(user.getNickName()) != chan.operators.end())
@@ -83,8 +90,15 @@ bool	serv::joinWithTwoArgs(User &user, Channel &chan, std::vector<string> arr, b
 
 bool	serv::joinWithOneArgs(User &user, Channel &chan, std::vector<string> arr, bool flag)
 {
+	/*debag*/
+	std::cout << "flag join 1 args = " << flag << std::endl;
+	for (auto it = arr.begin(); it != arr.end(); ++it)
+		std::cout << *it << " ";
+	std::cout << std::endl; 	
+	/*debag*/
 	if (flag)
 	{
+		std::cout << "isjoining" << std::endl;
 		isJoining = true;
 		chan.renameChannel(arr[0]);
 	}
@@ -114,24 +128,34 @@ bool	serv::joinWithOneArgs(User &user, Channel &chan, std::vector<string> arr, b
 	return (false);
 }
 
-void	serv::addUserToChannel(User &user, Channel &chan, std::vector<string> arr, bool flag)
+void serv::addUserToChannel(User &user, Channel &chan, std::vector<string> arr, bool flag)
 {
 	if (arr.size() >= 2)
 	{
+		std::cout << "1" << std::endl;
 		if (joinWithTwoArgs(user, chan, arr, flag))
 			return ;
 	}
 	else if (arr.size() == 1 && chan.getChannelKey().empty())
 	{
+				std::cout << "2" << std::endl;
+
 		if (joinWithOneArgs(user, chan, arr, flag))
 			return ;
 	}
 	else
 		return ;
+	std::cout << "3" << std::endl;
+
 	all_channels.insert(make_pair(chan.getChannelName(), chan));
 	// all_channels.insert(make_pair<std::string, Channel>(chan.getChannelName(), chan));
 	all_channels.find(chan.getChannelName())->second.setMembers(user.getUserFD(), user);
 	user.addChannel(all_channels.find(chan.getChannelName())->first, all_channels.find(chan.getChannelName())->second);
+	std::cout << "4" << std::endl;
+	/*debug*/
+	for (std::map<std::string, bool>::const_iterator i = chan.operators.begin(); i != chan.operators.end(); i++)
+		std::cout << "name = " << i->first << " bool = " << i->second << std::endl;
+	/*debug*/
 }
 
 
@@ -214,23 +238,32 @@ void	serv::notifyJoin(Channel &chan, User &user)
 	errors.RPL_ENDOFNAMES(user.getUserFD(), user.getNickName(), chan.getChannelName());
 }
 
-void	serv::notifyMode(User &user, Channel &chan)
+void serv::notifyMode(User &user, Channel &chan)
 {
-	std::string msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " w\n";
-	send(user.getUserFD(), msg.c_str(), msg.size(), 0);
-	if (!chan.getChannelKey().empty())
-	{
-		msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " k\n";
-		send(user.getUserFD(), msg.c_str(), msg.size(), 0);
-	}
-	if (chan.i)
-	{
-		msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " i\n";
-		send(user.getUserFD(), msg.c_str(), msg.size(), 0);
-	}
-	if (chan.l)
-	{
-		msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " l\n";
-		send(user.getUserFD(), msg.c_str(), msg.size(), 0);
-	}
+    std::string modeStr = "+";
+
+    // Добавляем флаги, которые реально установлены на канале
+    if (chan.i) modeStr += "i";          // Invite-only
+    if (chan.t) modeStr += "t";          // Topic только для операторов
+    if (!chan.getChannelKey().empty()) modeStr += "k"; // Канал с паролем
+    if (!chan.operators.empty()) modeStr += "o";      // Есть операторы
+    if (chan.l) modeStr += "l";          // Лимит участников
+
+    // Отправляем пользователю текущие флаги MODE
+    std::string msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " " + modeStr + "\n";
+    send(user.getUserFD(), msg.c_str(), msg.size(), 0);
+
+    // Если установлен ключ (k) — показать его
+    if (!chan.getChannelKey().empty())
+    {
+        msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " k\n";
+        send(user.getUserFD(), msg.c_str(), msg.size(), 0);
+    }
+
+    // Можно по желанию показать лимит, если установлен
+    if (chan.l)
+    {
+        msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " l " + std::to_string(chan.max) + "\n";
+        send(user.getUserFD(), msg.c_str(), msg.size(), 0);
+    }
 }
