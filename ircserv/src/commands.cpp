@@ -189,7 +189,8 @@ void	serv::privmsg(string b, User &user)
 	userNick = b.substr(0, sp);
 	msg = b.substr(sp, b.size() - sp);
 	msg = msg.substr(msg.find(":"), msg.size());
-	std::vector<std::string> part = splitString(userNick);
+	std::vector<std::string> part = splitString(userNick);	
+	
 	if (part.empty())
 	{
 		errors.sendRecipientMissing(user.getUserFD(), "PRIVMSG");
@@ -246,7 +247,6 @@ void	serv::join(string b, User &user)
 	{
 		if (!i->second.i)
 		{
-			cout << "2" << endl;
 			addUserToChannel(user, i->second, arr, false);
 		}
 		else
@@ -254,16 +254,9 @@ void	serv::join(string b, User &user)
 			errors.sendChannelInviteOnly(user.getUserFD(), arr[0]);
 			return ;
 		}
-		/*debug*/
-		std::cout << "operators after JOIN" << std::endl;
-		for (std::map<std::string, bool>::const_iterator itr = i->second.operators.begin();
-			itr != i->second.operators.end(); ++itr)
-	 			std::cout << "name = " << itr->first << " bool = " << itr->second << std::endl;
-		/*debug*/
 	}
 	else
 	{
-		cout << "1" << endl;
 		Channel chan(arr[0]);
 		chan.operators.insert(std::pair<std::string, bool> (user.getNickName(), true));
 		addUserToChannel(user, chan, arr, true);
@@ -290,11 +283,16 @@ void	serv::kick(std::string b, User &user)
 				errors.sendNickNotFound(user.getUserFD(), arr[1]);
 				return ;
 			}
+			User* kickedUser = it->second;
+
 			errors.RPL_KICK(it->first, user.getNickName(), user.getUserName(), it->second->getNickName(), i->first);
 			std::string prefix = ":" + user.getNickName() + "!" + user.getUserName() + "@localhost KICK ";
 			std::string msg = i->first + " " + it->second->getNickName() + "\n";
 			sendToAllUsers(i->second->getParticipants(), prefix, msg);
+
+			kickedUser->getChannels().erase(i->first);
 			i->second->getParticipants().erase(it);
+
 			if (i->second->getParticipants().empty())
 				all_channels.erase(i->second->getChannelName());
 		}
@@ -325,14 +323,13 @@ void	serv::invite(std::string b, User &user)
 		errors.sendNotOnChannel(user.getUserFD(), arr[0]);
 		return ;
 	}
-	/* debug*/
-	std::cout << "before if checking" << std::endl;
-	if (/*ch->second->i &&*/ ch->second->operators.find(user.getNickName()) == ch->second->operators.end())
+
+	if (ch->second->operators.find(user.getNickName()) == ch->second->operators.end())
 	{
 		errors.sendOpPrivilegesNeeded(user.getUserFD(), arr[1]);
 		return ;
 	}
-	/*debug*/
+
 	if (!getUserFDByNick(arr[0]))
 	{
 		errors.sendNickNotFound(user.getUserFD(), arr[0]);
@@ -345,20 +342,12 @@ void	serv::invite(std::string b, User &user)
 		return ;
 	}
 	cout << it->first << endl;
-	// if (ch->second->i && ch->second->operators.find(user.getNickName()) == ch->second->operators.end())
-	// {
-	// 	errors.sendOpPrivilegesNeeded(user.getUserFD(), arr[1]);
-	// 	return ;
-	// }
+
 	cout << it->second.getUserFD() << endl;
 	ch->second->setMembers(getUserFDByNick(arr[0]), users.find(getUserFDByNick(arr[0]))->second);
 	it->second.addChannel(ch->second->getChannelName(), *(ch->second));
 	errors.RPL_INVITING(user.getUserFD(), ch->second->getChannelName(), user.getNickName(), user.getUserName(), arr[0]);
-	/*debug*/
-	std::cout << "operators after INVITE" << std::endl;
-	for (std::map<std::string, bool>::const_iterator i = ch->second->operators.begin(); i != ch->second->operators.end(); i++)
-		std::cout << "name = " << i->first << " bool = " << i->second << std::endl;
-	/*debug*/
+
 }
 
 void	serv::channelTopic(std::string b, User &user)

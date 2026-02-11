@@ -241,26 +241,21 @@ void	serv::notifyJoin(Channel &chan, User &user)
 void serv::notifyMode(User &user, Channel &chan)
 {
     std::string modeStr = "+";
+    if (chan.i) modeStr += "i";          
+    if (chan.t) modeStr += "t";          
+    if (!chan.getChannelKey().empty()) modeStr += "k"; 
+    if (!chan.operators.empty()) modeStr += "o";      
+    if (chan.l) modeStr += "l";          
 
-    // Добавляем флаги, которые реально установлены на канале
-    if (chan.i) modeStr += "i";          // Invite-only
-    if (chan.t) modeStr += "t";          // Topic только для операторов
-    if (!chan.getChannelKey().empty()) modeStr += "k"; // Канал с паролем
-    if (!chan.operators.empty()) modeStr += "o";      // Есть операторы
-    if (chan.l) modeStr += "l";          // Лимит участников
-
-    // Отправляем пользователю текущие флаги MODE
     std::string msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " " + modeStr + "\n";
     send(user.getUserFD(), msg.c_str(), msg.size(), 0);
 
-    // Если установлен ключ (k) — показать его
     if (!chan.getChannelKey().empty())
     {
         msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " k\n";
         send(user.getUserFD(), msg.c_str(), msg.size(), 0);
     }
 
-    // Можно по желанию показать лимит, если установлен
     if (chan.l)
     {
         msg = "324 " + user.getNickName() + " " + chan.getChannelName() + " l " + std::to_string(chan.max) + "\n";
